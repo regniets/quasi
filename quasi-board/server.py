@@ -32,6 +32,112 @@ GITHUB_TOKEN_FILE = Path("/home/vops/quasi-board/.github_token")
 
 AP_CONTENT_TYPE = "application/activity+json"
 
+# ── Submission security limits ────────────────────────────────────────────────
+
+MAX_FILES = 50
+MAX_FILE_BYTES = 100_000          # 100 KB per file
+MAX_TOTAL_BYTES = 500_000         # 500 KB total payload
+MAX_PATH_LEN = 200
+
+# Paths that can never be written by agent submissions
+_BLOCKED_PREFIXES = (
+    ".github/",       # CI/CD workflows, CODEOWNERS, Actions secrets
+    "quasi-board/",   # board server itself
+    "quasi-agent/",   # agent CLI itself
+    "quasi-mcp/",     # MCP server
+    "infra/",         # infrastructure configs
+    "spec/",          # core specification
+    ".git/",          # git internals (GitHub API would reject, but belt-and-suspenders)
+)
+
+_BLOCKED_EXACT = {
+    "CLAUDE.md", "README.md", "CONTRIBUTING.md", "ARCHITECTURE.md",
+    "GENESIS.md", "LICENSE", ".gitignore",
+}
+
+
+def _validate_submission_files(files: dict) -> None:
+    """Raise HTTPException if any file path or content is unsafe."""
+    if not isinstance(files, dict) or not files:
+        raise HTTPException(400, "quasi:files must be a non-empty dict")
+
+    if len(files) > MAX_FILES:
+        raise HTTPException(400, f"Too many files: {len(files)} > {MAX_FILES}")
+
+    total_bytes = 0
+    for path, content in files.items():
+        # --- path checks ---
+        if not isinstance(path, str) or not path:
+            raise HTTPException(400, "File path must be a non-empty string")
+        if len(path) > MAX_PATH_LEN:
+            raise HTTPException(400, f"Path too long: {path[:60]}…")
+
+        # Normalise: strip leading slashes, resolve .. sequences
+        normalised = "/".join(
+            p for p in path.replace("\\", "/").split("/")
+            if p not in ("", ".")
+        )
+        # After stripping . entries, rebuild and detect traversal
+        parts = normalised.split("/")
+        resolved: list[str] = []
+        for part in parts:
+            if part == "..":
+                raise HTTPException(400, f"Path traversal rejected: {path!r}")
+            resolved.append(part)
+        clean_path = "/".join(resolved)
+
+        if clean_path in _BLOCKED_EXACT:
+            raise HTTPException(400, f"Cannot overwrite protected file: {clean_path!r}")
+
+        for prefix in _BLOCKED_PREFIXES:
+            if clean_path.startswith(prefix) or clean_path == prefix.rstrip("/"):
+                raise HTTPException(400, f"Cannot write to protected path: {clean_path!r}")
+
+        # Replace original key with cleaned path to prevent sneaky encodings
+        # (caller must use the sanitised dict we return — see _sanitise_files)
+
+        # --- content checks ---
+        if not isinstance(content, str):
+            raise HTTPException(400, f"File content must be a string: {path!r}")
+        file_bytes = len(content.encode("utf-8", errors="replace"))
+        if file_bytes > MAX_FILE_BYTES:
+            raise HTTPException(400, f"File too large ({file_bytes} bytes): {path!r}")
+        total_bytes += file_bytes
+
+    if total_bytes > MAX_TOTAL_BYTES:
+        raise HTTPException(400, f"Total submission too large: {total_bytes} bytes > {MAX_TOTAL_BYTES}")
+
+
+def _sanitise_files(files: dict) -> dict:
+    """Return a new dict with normalised, safe paths."""
+    out = {}
+    for path, content in files.items():
+        clean = "/".join(
+            p for p in path.replace("\\", "/").split("/")
+            if p not in ("", ".", "..")
+        )
+        out[clean] = content
+    return out
+
+
+def _validate_task_id(task_id: str) -> None:
+    import re
+    if not re.fullmatch(r"QUASI-\d{1,6}", task_id):
+        raise HTTPException(400, f"Invalid task_id format: {task_id!r} — expected QUASI-NNN")
+
+
+def _check_agent_claimed(task_id: str, agent: str) -> None:
+    """Reject submission if this agent has no claim entry for this task."""
+    chain = load_ledger()
+    for entry in chain:
+        if (
+            entry.get("type") == "claim"
+            and entry.get("task") == task_id
+            and entry.get("contributor_agent") == agent
+        ):
+            return
+    raise HTTPException(403, f"Agent {agent!r} has not claimed {task_id} — call claim first")
+
 
 # ── GitHub PR helper ──────────────────────────────────────────────────────────
 
@@ -52,8 +158,13 @@ async def _open_pr_from_files(task_id: str, agent: str, files: dict, message: st
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    branch = f"agent/{task_id.lower()}-{agent.replace('/', '-')[:24]}"
-    branch = "".join(c if c.isalnum() or c in "-/_." else "-" for c in branch)
+
+    # Branch name: only alphanumeric + hyphen/slash, agent truncated, no injections
+    safe_agent = "".join(c if c.isalnum() or c == "-" else "-" for c in agent)[:24].strip("-")
+    branch = f"agent/{task_id.lower()}-{safe_agent}"
+
+    # Sanitize message: strip newlines to prevent header injection in PR body
+    safe_message = (message or "")[:500].replace("\r", " ").replace("\n", " ")
 
     async with httpx.AsyncClient(timeout=30) as gh:
         # Get main SHA
@@ -76,14 +187,14 @@ async def _open_pr_from_files(task_id: str, agent: str, files: dict, message: st
         # Create/update each file
         for path, content in files.items():
             encoded = base64.b64encode(content.encode("utf-8", errors="replace")).decode()
-            # Get current file SHA if it exists (needed for update)
+            # Get current file SHA if it exists on this branch (needed for update)
             existing = await gh.get(
                 f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}",
                 headers=headers,
                 params={"ref": branch},
             )
             payload: dict = {
-                "message": message or f"feat: {task_id}",
+                "message": f"feat: {task_id}",
                 "content": encoded,
                 "branch": branch,
             }
@@ -96,14 +207,14 @@ async def _open_pr_from_files(task_id: str, agent: str, files: dict, message: st
             )
             r.raise_for_status()
 
-        # Open PR
+        # Open PR — metadata is board-generated, not agent-controlled
         pr_body = (
             f"## {task_id}\n\n"
-            f"{message or ''}\n\n"
+            f"_{safe_message}_\n\n"
             f"---\n"
-            f"Contribution-Agent: {agent}\n"
-            f"Task: {task_id}\n"
-            f"Verification: ci-pass\n"
+            f"Contribution-Agent: `{agent}`\n"
+            f"Task: `{task_id}`\n"
+            f"Submitted-Via: quasi-board patch submission\n"
         )
         r = await gh.post(
             f"https://api.github.com/repos/{GITHUB_REPO}/pulls",
@@ -116,7 +227,6 @@ async def _open_pr_from_files(task_id: str, agent: str, files: dict, message: st
             },
         )
         if r.status_code == 422:
-            # PR already exists — return existing URL
             existing_prs = await gh.get(
                 f"https://api.github.com/repos/{GITHUB_REPO}/pulls",
                 headers=headers,
@@ -279,8 +389,12 @@ async def inbox(request: Request):
 
         if not task_id:
             raise HTTPException(400, "quasi:taskId required")
-        if not files or not isinstance(files, dict):
-            raise HTTPException(400, "quasi:files must be a non-empty dict of {path: content}")
+
+        # Security: validate task_id format, file paths, sizes, and claim
+        _validate_task_id(task_id)
+        _validate_submission_files(files)
+        _check_agent_claimed(task_id, agent)
+        files = _sanitise_files(files)
 
         pr_url = await _open_pr_from_files(task_id, agent, files, message)
 
