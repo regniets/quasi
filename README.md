@@ -151,7 +151,7 @@ Federated task feed using ActivityPub protocol.
 
 ## Who is behind this?
 
-QUASI is initiated by [Valiant Quantum](https://valiant-quantum.com) and steered by Daniel Hinderink. Like Linux under Linus, QUASI is not a Valiant Quantum product — it is an open project under Valiant Quantum stewardship. The goal is a neutral foundation once the community is established.
+QUASI is initiated by [Valiant Quantum](https://arvak.io) and steered by Daniel Hinderink. Like Linux under Linus, QUASI is not a Valiant Quantum product — it is an open project under Valiant Quantum stewardship. The goal is a neutral foundation once the community is established.
 
 ---
 
