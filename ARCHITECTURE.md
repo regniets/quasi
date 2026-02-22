@@ -8,8 +8,10 @@ Natural language (human describes problem)
    AI model (Claude, GPT, Llama, ...)
         ↓  generates
    Ehrenfest program (.ef)       ← physics-native, not human-readable
-        ↓  compiles to
-   ZX-calculus (optimization)
+        ↓  compiled by
+   Afana                         ← the Ehrenfest compiler
+        ↓  optimized via
+   ZX-calculus
         ↓  extracts gate sequences
    HAL Contract (L0)             ← the POSIX of QPUs
         ↓
@@ -22,10 +24,10 @@ Natural language (human describes problem)
 |-------|------|--------|---------|
 | L0 | HAL Contract Specification | ✅ v2.2 | Apache 2.0 |
 | L1 | Hardware Adapters | ✅ IBM, IQM, Scaleway, AQT | Apache 2.0 |
-| L2 | Compiler / IR | ✅ arvak-compile, arvak-ir | Apache 2.0 |
+| L2 | Afana Compiler / IR | ✅ arvak-compile, arvak-ir | Apache 2.0 |
 | L3 | QUASI Runtime Services | 🔲 Specified, not built | AGPL v3 |
 | L4 | QUASI Standard Interface | 🔲 Spec in progress | Apache 2.0 |
-| L5 | Application Libraries | 🔲 Community grows this | Various |
+| L5 | Application Libraries (Urns) | 🔲 Community grows this | Various |
 | — | ZX-calculus | ✅ PyZX (MIT, external) | MIT |
 | — | Ehrenfest Language | 🔲 Concept complete | AGPL v3 |
 
@@ -42,10 +44,31 @@ Named after Paul Ehrenfest (1880–1933), whose theorem bridges quantum expectat
 The human never sees an Ehrenfest program. The full loop:
 
 ```
-human intent → AI → Ehrenfest → compiler → QPU → result → AI → human
+human intent → AI → Ehrenfest → Afana → QPU → result → AI → human
 ```
 
 Community shortname: **Paul**. As in: "write me a Paul program", "that's valid Paul."
+
+## Afana
+
+Named after Tatiana Afanasyeva (1876–1964), Paul Ehrenfest's wife and mathematical collaborator. She co-authored the Urnenmodell, contributed foundational work on statistical mechanics, and made Ehrenfest's physical intuitions mathematically rigorous.
+
+**Afana is the Ehrenfest compiler.** It takes `.ef` CBOR programs, applies ZX-calculus optimization, and emits HAL Contract gate sequences for execution on any QUASI-compatible backend.
+
+The naming is accurate: Afana turns Ehrenfest's representations into something that executes.
+
+## Urns
+
+Named after Ehrenfest's Urnenmodell — a probabilistic diffusion model co-developed with Tatiana Afanasyeva.
+
+**Urns are QUASI's package format** — what crates are in Rust, what packages are in npm. An urn is a reusable, composable quantum computation unit: a typed Ehrenfest program with declared observables, noise requirements, and HAL Contract dependencies.
+
+```
+urn publish --name grover-search --version 0.1.0
+urn add grover-search
+```
+
+The urnery is the public urn registry.
 
 ## QUASI Standard Interface (L4) — Sketch
 
@@ -90,8 +113,8 @@ The project structure mirrors the OS structure mirrors the language structure:
 
 | Standard | Relationship |
 |----------|-------------|
-| QIR (Microsoft) | Ehrenfest compiles to HAL-compatible gate sequences equivalent to QIR output |
-| OpenQASM 3 | Possible compiler output target, not intermediate format |
+| QIR (Microsoft) | Afana compiles to HAL-compatible gate sequences equivalent to QIR output |
+| OpenQASM 3 | Possible Afana output target, not intermediate format |
 | ZX-calculus | Optimization layer between Ehrenfest and gate sequences |
 | PennyLane | PennyLane has Hamiltonian support as a Python layer; Ehrenfest is a separate representation level |
 

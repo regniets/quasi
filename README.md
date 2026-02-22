@@ -17,18 +17,24 @@ Natural language (human describes problem)
         ↓
    AI model (Claude, GPT, Llama, ...)
         ↓  generates
-   Ehrenfest program             ← physics-native, not human-readable
-        ↓  compiles to
-   ZX-calculus (optimization)
+   Ehrenfest program (.ef)       ← physics-native, not human-readable
+        ↓  compiled by
+   Afana                         ← the Ehrenfest compiler
+        ↓  optimized via
+   ZX-calculus
         ↓  extracts
    HAL Contract                  ← the POSIX standard for QPUs
         ↓
    IBM | IQM | Quantinuum | neQxt | Simulator | ...
 ```
 
-**Ehrenfest** is QUASI's specification language. It is not made for humans. It thinks in Hamiltonians and observables — not gates. The human describes their problem in natural language. The AI writes the program. The compiler handles the rest.
+**Ehrenfest** is QUASI's specification language. Named after Paul Ehrenfest (1880–1933). It is not made for humans — CBOR binary, no canonical text form. It thinks in Hamiltonians and observables, not gates. The AI writes the program. The human never sees it.
 
-**HAL Contract** is the standard. Any backend that implements it is QUASI-compatible. No vendor lock-in.
+**Afana** is the Ehrenfest compiler. Named after Tatiana Afanasyeva, Ehrenfest's wife and mathematical collaborator — who made his ideas rigorous.
+
+**Urns** are QUASI's package format. Named after Ehrenfest's Urnenmodell. An urn is a reusable, composable quantum computation unit — what a crate is in Rust.
+
+**HAL Contract** is the hardware standard. Any backend that implements it is QUASI-compatible. No vendor lock-in.
 
 ---
 
@@ -40,7 +46,7 @@ What's needed:
 
 | Skill | Role |
 |-------|------|
-| **Rust** | Compiler, HAL implementation, adapters |
+| **Rust** | Afana compiler, HAL adapters |
 | **Formal methods / type theory** | Ehrenfest CBOR schema, noise type system |
 | **Distributed systems** | quasi-board (ActivityPub), quasi-ledger |
 | **AI / agent engineering** | quasi-agent (the BOINC client for AI) |
@@ -114,10 +120,21 @@ Federated task feed using ActivityPub protocol.
 
 - HAL Contract v2.2: ✅ implemented (in [Arvak](https://github.com/hiq-lab/arvak))
 - Ehrenfest concept paper: ✅ complete
-- Ehrenfest compiler: 🔲 not yet started
+- Afana compiler: 🔲 not yet started
 - QUASI L4 Standard Interface: 🔲 spec in progress
 
 **This is the right time to join.**
+
+---
+
+## Nomenclature
+
+| Name | What it is | Named after |
+|------|-----------|-------------|
+| **Ehrenfest** | The specification language | Paul Ehrenfest (1880–1933) |
+| **Afana** | The compiler | Tatiana Afanasyeva, his wife and co-author |
+| **Urn** | Package / module unit | Ehrenfest's Urnenmodell |
+| **HAL Contract** | Hardware standard (L0) | Hardware Abstraction Layer |
 
 ---
 
@@ -127,7 +144,7 @@ Federated task feed using ActivityPub protocol.
 |-----------|---------|
 | HAL Contract Specification | Apache 2.0 |
 | QUASI OS Core (L3–L4) | AGPL v3 |
-| Ehrenfest Compiler | AGPL v3 |
+| Afana Compiler | AGPL v3 |
 | Client SDKs | LGPL v3 |
 
 ---
@@ -135,6 +152,18 @@ Federated task feed using ActivityPub protocol.
 ## Who is behind this?
 
 QUASI is initiated by [Valiant Quantum](https://valiant-quantum.com) and steered by Daniel Hinderink. Like Linux under Linus, QUASI is not a Valiant Quantum product — it is an open project under Valiant Quantum stewardship. The goal is a neutral foundation once the community is established.
+
+---
+
+---
+
+## On Ehrenfest
+
+> *"He was not merely the best teacher in our profession whom I have ever known; he was also passionately preoccupied with the development and destiny of men, especially his students. To understand others, to gain their friendship and trust, to aid anyone embroiled in outer or inner struggles, to encourage youthful talent — all this was his real element, almost more than his immersion in scientific problems."*
+>
+> — Albert Einstein, eulogy for Paul Ehrenfest, 1933
+
+QUASI is built for those who want to understand and contribute — not merely those who already know. Ehrenfest would have approved.
 
 ---
 

@@ -20,7 +20,7 @@ QUASI uses the same principle as a well-coordinated agent network:
 If you contribute with an AI model, please include in the commit footer:
 
 ```
-feat(hal): implement ZX lowering for CX gate
+feat(ehrenfest): implement ZX lowering for CX gate
 
 Contribution-Agent: claude-sonnet-4-6
 Task: QUASI-0042
