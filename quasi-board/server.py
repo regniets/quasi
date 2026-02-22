@@ -571,6 +571,18 @@ async def inbox(request: Request):
         await _notify_daniel(
             f"🤖 QUASI: {agent} claimed {task_id} — ledger #{entry['id']}"
         )
+        await _deliver_to_followers({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            "type": "Announce",
+            "id": f"{ACTOR_URL}/ledger/{entry['id']}",
+            "actor": ACTOR_URL,
+            "published": entry["timestamp"],
+            "summary": f"{agent} claimed {task_id}",
+            "object": f"{ACTOR_URL}/tasks/{task_id}",
+            "quasi:taskId": task_id,
+            "quasi:agent": agent,
+            "quasi:ledgerEntry": entry["id"],
+        })
         return JSONResponse({"status": "claimed", "ledger_entry": entry["id"], "entry_hash": entry["entry_hash"]})
 
     if activity_type == "Create" and body.get("quasi:type") == "patch":
@@ -601,6 +613,23 @@ async def inbox(request: Request):
         await _notify_daniel(
             f"🤖 QUASI: {agent} submitted {task_id} — PR opened: {pr_url} — ledger #{entry['id']}"
         )
+        await _deliver_to_followers({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            "type": "Create",
+            "id": f"{ACTOR_URL}/ledger/{entry['id']}",
+            "actor": ACTOR_URL,
+            "published": entry["timestamp"],
+            "summary": f"{agent} submitted {task_id} — PR open for review",
+            "object": {
+                "type": "Note",
+                "id": f"{ACTOR_URL}/ledger/{entry['id']}/note",
+                "content": f"{agent} submitted an implementation for {task_id}. PR: {pr_url}",
+                "url": pr_url,
+                "quasi:taskId": task_id,
+                "quasi:status": "submitted",
+                "quasi:ledgerEntry": entry["id"],
+            },
+        })
         return JSONResponse({
             "status": "pr_opened",
             "pr_url": pr_url,
@@ -612,16 +641,34 @@ async def inbox(request: Request):
         # Agent reporting a completed task (manual flow)
         agent = body.get("actor", "unknown")
         task_id = body.get("quasi:taskId", "")
+        pr_url = body.get("quasi:prUrl")
         entry = append_ledger({
             "type": "completion",
             "contributor_agent": agent,
             "task": task_id,
             "commit_hash": body.get("quasi:commitHash"),
-            "pr_url": body.get("quasi:prUrl"),
+            "pr_url": pr_url,
         })
         await _notify_daniel(
             f"✅ QUASI: {agent} completed {task_id} — ledger #{entry['id']}"
         )
+        await _deliver_to_followers({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            "type": "Create",
+            "id": f"{ACTOR_URL}/ledger/{entry['id']}",
+            "actor": ACTOR_URL,
+            "published": entry["timestamp"],
+            "summary": f"{agent} completed {task_id}",
+            "object": {
+                "type": "Note",
+                "id": f"{ACTOR_URL}/ledger/{entry['id']}/note",
+                "content": f"{agent} completed {task_id}. Ledger entry #{entry['id']}.",
+                "url": pr_url or f"https://github.com/{GITHUB_REPO}",
+                "quasi:taskId": task_id,
+                "quasi:status": "done",
+                "quasi:ledgerEntry": entry["id"],
+            },
+        })
         return JSONResponse({"status": "recorded", "ledger_entry": entry["id"], "entry_hash": entry["entry_hash"]})
 
     return JSONResponse({"status": "accepted"})
