@@ -449,21 +449,38 @@ def fetch_tasks() -> list[dict]:
     ]
 
 
+AS_PUBLIC = "https://www.w3.org/ns/activitystreams#Public"
+
+
 def task_to_ap(task: dict) -> dict:
     task_id = task["number"]
-    return {
-        "@context": "https://www.w3.org/ns/activitystreams",
+    published = datetime.now(timezone.utc).isoformat()
+    note_id = f"{ACTOR_URL}/tasks/{task_id}"
+    body = task.get("body", "").strip()[:300]
+    note = {
         "type": "Note",
-        "id": f"{ACTOR_URL}/tasks/{task_id}",
+        "id": note_id,
         "attributedTo": ACTOR_URL,
-        "content": task.get("body", ""),
-        "name": task["title"],
+        "to": [AS_PUBLIC],
+        "cc": [f"{ACTOR_URL}/followers"],
+        "content": (
+            f"<p><strong>{task['title']}</strong></p>"
+            f"<p>{body}</p>"
+            f"<p>🔗 <a href=\"{task['html_url']}\">{task['html_url']}</a></p>"
+        ),
         "url": task["html_url"],
+        "published": published,
         "quasi:taskId": f"QUASI-{task_id:03d}",
         "quasi:status": "open",
-        "quasi:claimUrl": f"{INBOX_URL}",
-        "quasi:ledgerUrl": f"{ACTOR_URL}/ledger",
-        "published": datetime.now(timezone.utc).isoformat(),
+    }
+    return {
+        "type": "Create",
+        "id": f"{note_id}/activity",
+        "actor": ACTOR_URL,
+        "published": published,
+        "to": [AS_PUBLIC],
+        "cc": [f"{ACTOR_URL}/followers"],
+        "object": note,
     }
 
 
@@ -492,6 +509,7 @@ async def actor():
         "inbox": INBOX_URL,
         "outbox": OUTBOX_URL,
         "followers": f"{ACTOR_URL}/followers",
+        "manuallyApprovesFollowers": False,
         "publicKey": {
             "id": ACTOR_KEY_ID,
             "owner": ACTOR_URL,
