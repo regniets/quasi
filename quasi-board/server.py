@@ -25,7 +25,7 @@ ACTOR_URL = f"https://{DOMAIN}/quasi-board"
 OUTBOX_URL = f"{ACTOR_URL}/outbox"
 INBOX_URL = f"{ACTOR_URL}/inbox"
 LEDGER_FILE = Path("/home/vops/quasi-ledger/ledger.json")
-OPENAPI_SPEC = Path(__file__).parent.parent / "spec" / "openapi.json"
+OPENAPI_SPEC = Path(__file__).parent / "spec" / "openapi.json"
 GITHUB_REPO = "ehrenfest-quantum/quasi"
 
 AP_CONTENT_TYPE = "application/activity+json"
