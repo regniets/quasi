@@ -1,133 +1,140 @@
 # QUASI — Quantum OS
 
-**Das erste Quantum OS das davon ausgeht, dass KI es baut.**
+**The first Quantum OS designed for AI as primary contributor.**
 
-QUASI ist eine offene Spezifikation und Implementierung für ein hardware-agnostisches Quantum Operating System. Es setzt auf KI als primären Contributor — nicht als Werkzeug, sondern als Autor.
+QUASI is an open specification and implementation for a hardware-agnostic Quantum Operating System. It treats AI as author, not tool.
 
 ---
 
-## Was ist QUASI?
+## The Problem
 
-Quantum Computing hat dasselbe Problem das Unix in den 1970ern hatte: jeder Hersteller baut seinen eigenen Stack. Qiskit läuft am besten auf IBM. Cirq auf Google. Programme sind nicht portabel.
+Quantum computing has the same problem Unix had in the 1970s: every vendor builds their own stack. Qiskit works best on IBM. Cirq on Google. Programs are not portable. Scientists write in vendor-specific Python and hope the hardware is available.
 
-QUASI ist der POSIX-Moment des Quantum Computing.
+QUASI is the POSIX moment of quantum computing.
 
 ```
-Natürliche Sprache (Mensch beschreibt Problem)
+Natural language (human describes problem)
         ↓
-   KI-Agent (Claude, GPT, Llama, ...)
-        ↓  generiert
-   Ehrenfest-Programm        ← physik-native, nicht für Menschen lesbar
-        ↓  kompiliert
-   ZX-Kalkül (Optimierung)
+   AI model (Claude, GPT, Llama, ...)
+        ↓  generates
+   Ehrenfest program             ← physics-native, not human-readable
+        ↓  compiles to
+   ZX-calculus (optimization)
+        ↓  extracts
+   HAL Contract                  ← the POSIX standard for QPUs
         ↓
-   HAL Contract              ← der POSIX-Standard für QPUs
-        ↓
-   IBM | IQM | Quantinuum | neQxt | ...
+   IBM | IQM | Quantinuum | neQxt | Simulator | ...
 ```
 
-**Ehrenfest** ist die Sprache von QUASI. Sie ist nicht für Menschen gemacht. Sie denkt in Hamiltonians und Observablen, nicht in Gates. Der Mensch beschreibt sein Problem in natürlicher Sprache — die KI schreibt das Programm.
+**Ehrenfest** is QUASI's specification language. It is not made for humans. It thinks in Hamiltonians and observables — not gates. The human describes their problem in natural language. The AI writes the program. The compiler handles the rest.
 
-**HAL Contract** ist der Standard. Wer ihn implementiert, ist QUASI-kompatibel. Kein Vendor-Lock-in.
-
----
-
-## Warum du kein Quantenphysiker sein musst
-
-QUASI wird von KI-Agenten entwickelt. Das Task Board ist öffentlich. Jeder Task ist atomar, formal verifizierbar, und CI-geprüft.
-
-Was gebraucht wird:
-- **Rust-Entwickler** → Compiler, HAL-Implementierung, Adapter
-- **Formal Methods / Typsysteme** → Ehrenfest CBOR-Schema, Noise-Typsystem
-- **Distributed Systems** → quasi-board (ActivityPub), quasi-ledger (Attribution)
-- **AI/Agent-Entwickler** → quasi-agent (der BOINC-Client für KI)
-- **Quantenphysiker** → für Spec-Review (selten gebraucht, hochwertig)
-
-Die Architektur die du brauchst um beizutragen: **board.yaml + Claude Code + CI**. Das ist es.
+**HAL Contract** is the standard. Any backend that implements it is QUASI-compatible. No vendor lock-in.
 
 ---
 
-## Die Architektur des Projekts = die Architektur des OS
+## Why you don't need a quantum physics degree
 
-| QUASI OS | QUASI Projekt |
+QUASI is developed by AI agents. The task board is public. Every task is atomic, formally verifiable, and CI-checked.
+
+What's needed:
+
+| Skill | Role |
+|-------|------|
+| **Rust** | Compiler, HAL implementation, adapters |
+| **Formal methods / type theory** | Ehrenfest CBOR schema, noise type system |
+| **Distributed systems** | quasi-board (ActivityPub), quasi-ledger |
+| **AI / agent engineering** | quasi-agent (the BOINC client for AI) |
+| **Quantum physics** | Spec review — rare, high-value |
+
+The infrastructure you need to contribute: **a task from the board + Claude Code + CI**. That's it.
+
+---
+
+## The project structure mirrors the OS structure
+
+| QUASI OS | QUASI Project |
 |----------|---------------|
-| Job-Scheduler (L3) | Öffentliches Task Board |
-| QPU-Backend führt aus | KI-Agent führt Task aus |
-| Formal type checker | CI / Spec-Validator |
+| Job Scheduler (L3) | Public Task Board |
+| QPU Backend executes | AI Agent executes task |
+| Formal type checker | CI / Spec Validator |
 | Provenance Certificate | Attribution Ledger |
-| Ehrenfest Job-Unit | Contribution (kein Text-Diff) |
+| Ehrenfest job unit | Contribution (typed change-set, not text diff) |
 
-Das Projekt ist ein Meta-Modell von sich selbst.
+The project is a meta-instance of itself.
 
 ---
 
-## Mitmachen
+## Get involved
 
-### Sofort (heute)
+### Right now
 
-1. **Repo staren** — zeigt Interesse, kein Commitment
-2. **GitHub Discussions** — erste Fragen, Ideen, Kommentare
-3. **Ersten Task claimen** → [Issues](../../issues) → Label `good-first-task`
+1. **Star this repo** — signals interest, no commitment required
+2. **Open GitHub Discussions** — ask anything, share ideas
+3. **Claim a task** → [Issues](../../issues) → label `good-first-task`
 
-### Ersten Beitrag leisten
+### Make your first contribution
 
 ```bash
-# Task aus dem Board claimen
+# Find an open task
 gh issue list --label "good-first-task"
 
-# In deiner Claude Code Session:
-# Lies ARCHITECTURE.md, claim den Task, öffne einen PR
+# In your Claude Code session:
+# Read ARCHITECTURE.md, claim the task, open a PR
 ```
 
-### Als KI-Agent beitragen (quasi-agent, coming soon)
+### Contribute as an AI agent (quasi-agent, coming soon)
 
 ```bash
-# Wer einen lokalen LLM betreibt:
+# If you run a local LLM:
 quasi-agent start --model llama3.3:70b --max-tasks 10
-# → Lädt automatisch Tasks, löst sie, submitted Ergebnisse
+# → Automatically picks up tasks, solves them, submits results
 ```
 
 ---
 
-## Aktuelle Tasks
+## Open tasks (Good First)
 
-> **Good First Task #1:** CBOR-Schema für Ehrenfest Basis-Typen
-> Rust | Schwierigkeit: Medium | ca. 4h | [→ Issue]()
+**#1 — Ehrenfest CBOR Schema**
+Define the base types for Ehrenfest programs in CBOR/CDDL.
+`Rust | Medium | ~4h`
 
-> **Good First Task #2:** HAL Contract Python-Bindings (für quasi-agent)
-> Python | Schwierigkeit: Easy | ca. 2h | [→ Issue]()
+**#2 — HAL Contract Python Bindings**
+Python FFI for the HAL Contract (for quasi-agent).
+`Python | Easy | ~2h`
 
-> **Good First Task #3:** ActivityPub Task-Feed Prototyp (quasi-board)
-> TypeScript/Rust | Schwierigkeit: Hard | ca. 8h | [→ Issue]()
-
----
-
-## Lizenz
-
-- HAL Contract Specification: Apache 2.0
-- QUASI OS Core (L3–L4): AGPL v3
-- Ehrenfest Compiler: AGPL v3
-- Client SDKs: LGPL v3
+**#3 — quasi-board ActivityPub Prototype**
+Federated task feed using ActivityPub protocol.
+`TypeScript or Rust | Hard | ~8h`
 
 ---
 
 ## Status
 
-🟡 **Pre-Alpha** — Konzept und Spezifikation. Erster Compiler in Entwicklung.
+🟡 **Pre-Alpha** — specification and concept phase. First compiler in progress.
 
-HAL Contract v2.2 ist implementiert (in [Arvak](https://github.com/valiant-quantum/arvak)).
-Ehrenfest Konzeptpapier: fertig.
-Erster Compiler: noch nicht.
+- HAL Contract v2.2: ✅ implemented (in [Arvak](https://github.com/hiq-lab/arvak))
+- Ehrenfest concept paper: ✅ complete
+- Ehrenfest compiler: 🔲 not yet started
+- QUASI L4 Standard Interface: 🔲 spec in progress
 
-**Das ist der richtige Moment um einzusteigen.**
+**This is the right time to join.**
 
 ---
 
-## Kontakt
+## License
 
-- GitHub Discussions: hier
-- Initiator: Daniel Hinderink / [Valiant Quantum](https://valiant-quantum.com)
-- QUASI ist kein Valiant-Quantum-Produkt — es ist ein offenes Projekt unter Valiant-Quantum-Stewardship. Wie Linux unter Linus.
+| Component | License |
+|-----------|---------|
+| HAL Contract Specification | Apache 2.0 |
+| QUASI OS Core (L3–L4) | AGPL v3 |
+| Ehrenfest Compiler | AGPL v3 |
+| Client SDKs | LGPL v3 |
+
+---
+
+## Who is behind this?
+
+QUASI is initiated by [Valiant Quantum](https://valiant-quantum.com) and steered by Daniel Hinderink. Like Linux under Linus, QUASI is not a Valiant Quantum product — it is an open project under Valiant Quantum stewardship. The goal is a neutral foundation once the community is established.
 
 ---
 

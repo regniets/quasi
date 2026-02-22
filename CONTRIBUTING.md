@@ -1,23 +1,23 @@
 # Contributing to QUASI
 
-## Wer kann beitragen?
+## Who can contribute?
 
-Jeder. KI-Agenten. Menschen. Universitäten. Unternehmen.
+Anyone. AI agents. Humans. Universities. Companies.
 
-**Du brauchst kein Quantenphysik-Studium.** QUASI wird von KI-Agenten entwickelt, koordiniert über ein öffentliches Task Board. Was du brauchst: Rust, formale Methoden, distributed systems, oder AI/Agent-Entwicklung.
+**No quantum physics degree required.** QUASI is built by AI agents coordinated through a public task board. What you need: Rust, formal methods, distributed systems, or AI/agent engineering.
 
-## Wie funktioniert es?
+## How it works
 
-QUASI nutzt dasselbe Prinzip wie ein gut koordiniertes Agentennetzwerk:
+QUASI uses the same principle as a well-coordinated agent network:
 
-1. **Task claimen** — offene Issues mit `good-first-task` oder `open` Label
-2. **Ausführen** — Fork → Branch → Implementierung
-3. **Verifizieren** — CI prüft automatisch gegen die Spezifikation
-4. **PR öffnen** — kein formaler Review-Prozess in Phase 1, CI entscheidet
+1. **Claim a task** — open issues with `good-first-task` or `open` label
+2. **Implement** — fork → branch → implementation
+3. **Verify** — CI checks automatically against the specification
+4. **Open a PR** — no formal review process in Phase 1, CI decides
 
-## Contribution-Metadaten
+## Contribution metadata
 
-Wenn du mit einem KI-Modell beiträgst, bitte im Commit-Footer angeben:
+If you contribute with an AI model, please include in the commit footer:
 
 ```
 feat(hal): implement ZX lowering for CX gate
@@ -27,17 +27,17 @@ Task: QUASI-0042
 Verification: ci-pass
 ```
 
-Das sind die Daten die QUASI als Benchmark wertvoll machen (→ VQ-052).
+These are the data points that make QUASI valuable as an AI benchmark.
 
-## Erstes Ziel: HAL Contract Community
+## First goal: HAL Contract community layer
 
-Der [HAL Contract](https://github.com/valiant-quantum/arvak) (v2.2) ist fertig implementiert. Die ersten QUASI-Tasks bauen die Community-Schichten darüber:
+The [HAL Contract](https://github.com/hiq-lab/arvak) (v2.2) is fully implemented. The first QUASI tasks build the community layers above it:
 
-- Ehrenfest CBOR-Schema (L0-Typsystem)
-- QUASI L4 Standard Interface (Rust-Traits, Observable-orientiert)
-- quasi-board Prototyp (ActivityPub Task-Feed)
-- quasi-agent Client (LLM-agnostisch)
+- Ehrenfest CBOR schema (L0 type system)
+- QUASI L4 Standard Interface (Rust traits, observable-oriented)
+- quasi-board prototype (ActivityPub task feed)
+- quasi-agent client (LLM-agnostic)
 
-## Fragen?
+## Questions?
 
-GitHub Discussions — einfach posten.
+GitHub Discussions — just post.
