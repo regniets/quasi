@@ -1,5 +1,5 @@
 {
-  "name": "@quasi/mcp-server",
+  "name": "quasi-mcp-server",
   "version": "0.1.0",
   "description": "QUASI task board MCP server — list tasks, claim, complete, query the ledger",
   "type": "module",
