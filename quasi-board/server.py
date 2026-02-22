@@ -31,7 +31,7 @@ LEDGER_FILE = Path("/home/vops/quasi-ledger/ledger.json")
 OPENAPI_SPEC = Path(__file__).parent / "spec" / "openapi.json"
 GITHUB_REPO = "ehrenfest-quantum/quasi"
 GITHUB_TOKEN_FILE = Path("/home/vops/quasi-board/.github_token")
-MATRIX_CREDS_FILE = Path("/home/openclaw/.openclaw/credentials/matrix/credentials.json")
+MATRIX_CREDS_FILE = Path("/home/vops/quasi-board/matrix_credentials.json")
 MATRIX_ROOM_ID = "!CerauaaS111HsAzJXI:gawain.valiant-quantum.com"
 
 AP_CONTENT_TYPE = "application/activity+json"
