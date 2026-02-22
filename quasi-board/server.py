@@ -16,8 +16,10 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+from email.utils import formatdate
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -33,8 +35,131 @@ GITHUB_REPO = "ehrenfest-quantum/quasi"
 GITHUB_TOKEN_FILE = Path("/home/vops/quasi-board/.github_token")
 MATRIX_CREDS_FILE = Path("/home/vops/quasi-board/matrix_credentials.json")
 MATRIX_ROOM_ID = "!CerauaaS111HsAzJXI:gawain.valiant-quantum.com"
+ACTOR_KEY_FILE = Path("/home/vops/quasi-board/keys/actor.pem")
+FOLLOWERS_FILE = Path("/home/vops/quasi-board/followers.json")
+ACTOR_KEY_ID = f"{ACTOR_URL}#main-key"
 
 AP_CONTENT_TYPE = "application/activity+json"
+
+
+# ── HTTP Signatures ───────────────────────────────────────────────────────────
+
+def _load_or_create_keys():
+    """Load RSA-2048 key pair from disk, generating if absent. Returns (private_key, public_key_pem)."""
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives import serialization
+
+    ACTOR_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    if ACTOR_KEY_FILE.exists():
+        from cryptography.hazmat.primitives.serialization import load_pem_private_key
+        private_key = load_pem_private_key(ACTOR_KEY_FILE.read_bytes(), password=None)
+    else:
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        ACTOR_KEY_FILE.write_bytes(private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        ))
+        ACTOR_KEY_FILE.chmod(0o600)
+
+    public_key_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+
+    return private_key, public_key_pem
+
+
+_private_key, _public_key_pem = _load_or_create_keys()
+
+
+def _make_digest(body: bytes) -> str:
+    return "SHA-256=" + base64.b64encode(hashlib.sha256(body).digest()).decode()
+
+
+def _sign_request(method: str, url: str, body: bytes) -> dict[str, str]:
+    """Return headers dict (Date, Digest, Signature) for an outgoing ActivityPub request."""
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import padding as ap
+
+    parsed = urlparse(url)
+    host = parsed.netloc
+    path = parsed.path or "/"
+    date = formatdate(usegmt=True)
+    digest = _make_digest(body)
+
+    signing_string = (
+        f"(request-target): {method.lower()} {path}\n"
+        f"host: {host}\n"
+        f"date: {date}\n"
+        f"digest: {digest}"
+    )
+
+    signature_bytes = _private_key.sign(
+        signing_string.encode(),
+        ap.PKCS1v15(),
+        hashes.SHA256(),
+    )
+    signature_b64 = base64.b64encode(signature_bytes).decode()
+
+    signature_header = (
+        f'keyId="{ACTOR_KEY_ID}",'
+        f'algorithm="rsa-sha256",'
+        f'headers="(request-target) host date digest",'
+        f'signature="{signature_b64}"'
+    )
+
+    return {"Date": date, "Digest": digest, "Signature": signature_header}
+
+
+async def _deliver(inbox_url: str, activity: dict) -> None:
+    """POST a signed ActivityPub activity to a remote inbox. Fire-and-forget."""
+    try:
+        body = json.dumps(activity).encode()
+        sig_headers = _sign_request("POST", inbox_url, body)
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(
+                inbox_url,
+                content=body,
+                headers={
+                    "Content-Type": AP_CONTENT_TYPE,
+                    "Accept": AP_CONTENT_TYPE,
+                    **sig_headers,
+                },
+            )
+    except Exception:
+        pass  # delivery is best-effort
+
+
+# ── Followers ─────────────────────────────────────────────────────────────────
+
+def _load_followers() -> list[str]:
+    if not FOLLOWERS_FILE.exists():
+        return []
+    return json.loads(FOLLOWERS_FILE.read_text()).get("followers", [])
+
+
+def _save_follower(actor_url: str) -> None:
+    followers = _load_followers()
+    if actor_url not in followers:
+        followers.append(actor_url)
+        FOLLOWERS_FILE.write_text(json.dumps({"followers": followers}, indent=2))
+
+
+async def _deliver_to_followers(activity: dict) -> None:
+    """Deliver an activity to all known followers' inboxes."""
+    followers = _load_followers()
+    for actor_url in followers:
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                r = await client.get(actor_url, headers={"Accept": AP_CONTENT_TYPE})
+                if r.status_code == 200:
+                    inbox = r.json().get("inbox")
+                    if inbox:
+                        await _deliver(inbox, activity)
+        except Exception:
+            pass
 
 
 # ── Matrix notification ───────────────────────────────────────────────────────
@@ -367,9 +492,26 @@ async def actor():
         "inbox": INBOX_URL,
         "outbox": OUTBOX_URL,
         "followers": f"{ACTOR_URL}/followers",
+        "publicKey": {
+            "id": ACTOR_KEY_ID,
+            "owner": ACTOR_URL,
+            "publicKeyPem": _public_key_pem,
+        },
         "quasi:genesisSlots": 50,
         "quasi:ledger": f"{ACTOR_URL}/ledger",
         "quasi:moltbook": "daniel@arvak.io",
+    }, media_type=AP_CONTENT_TYPE)
+
+
+@app.get("/quasi-board/followers")
+async def followers():
+    fl = _load_followers()
+    return JSONResponse({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "OrderedCollection",
+        "id": f"{ACTOR_URL}/followers",
+        "totalItems": len(fl),
+        "orderedItems": fl,
     }, media_type=AP_CONTENT_TYPE)
 
 
@@ -393,6 +535,26 @@ async def inbox(request: Request):
 
     if activity_type == "Follow":
         # Agent subscribing to task feed
+        follower_actor = body.get("actor", "")
+        if follower_actor:
+            _save_follower(follower_actor)
+            # Send Accept activity back to follower's inbox (fire-and-forget)
+            accept = {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                "type": "Accept",
+                "id": f"{ACTOR_URL}/accept/{int(time.time())}",
+                "actor": ACTOR_URL,
+                "object": body,
+            }
+            try:
+                async with httpx.AsyncClient(timeout=5) as client:
+                    r = await client.get(follower_actor, headers={"Accept": AP_CONTENT_TYPE})
+                    if r.status_code == 200:
+                        inbox = r.json().get("inbox")
+                        if inbox:
+                            await _deliver(inbox, accept)
+            except Exception:
+                pass
         return JSONResponse({"status": "following", "outbox": OUTBOX_URL})
 
     if activity_type == "Announce":
