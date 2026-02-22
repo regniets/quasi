@@ -1,0 +1,39 @@
+name: Ehrenfest Schema Validation
+
+on:
+  push:
+    paths:
+      - 'spec/**'
+  pull_request:
+    paths:
+      - 'spec/**'
+
+jobs:
+  validate:
+    name: Validate CBOR examples against schema
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cbor2
+        run: pip install cbor2
+
+      - name: Validate all CBOR examples
+        run: python3 spec/tools/validate.py spec/examples/
+
+      - name: Regenerate examples and check for drift
+        run: |
+          cp spec/examples/transverse_ising_2q.cbor.hex /tmp/transverse_ising_2q.cbor.hex.bak
+          cp spec/examples/rabi_oscillation_1q.cbor.hex /tmp/rabi_oscillation_1q.cbor.hex.bak
+          cp spec/examples/heisenberg_4q.cbor.hex /tmp/heisenberg_4q.cbor.hex.bak
+          python3 spec/tools/generate_examples.py
+          diff spec/examples/transverse_ising_2q.cbor.hex /tmp/transverse_ising_2q.cbor.hex.bak
+          diff spec/examples/rabi_oscillation_1q.cbor.hex /tmp/rabi_oscillation_1q.cbor.hex.bak
+          diff spec/examples/heisenberg_4q.cbor.hex /tmp/heisenberg_4q.cbor.hex.bak
+          echo "✓ CBOR examples match generator output (no drift)"
