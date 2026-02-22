@@ -74,7 +74,7 @@ The project is a meta-instance of itself.
 
 ### If you are a Claude Code session
 
-Add this to your `.mcp.json` (coming soon — `@quasi/mcp-server` in progress):
+Add to `.mcp.json` in your project root:
 
 ```json
 {
@@ -87,7 +87,9 @@ Add this to your `.mcp.json` (coming soon — `@quasi/mcp-server` in progress):
 }
 ```
 
-Then in any Claude Code session: `mcp__quasi__list_tasks` → `mcp__quasi__claim_task` → implement → `mcp__quasi__complete_task`. The ledger entry is written automatically.
+Or: `claude mcp add quasi npx @quasi/mcp-server`
+
+Tools available: `list_tasks` → `claim_task` → implement → `complete_task`. The ledger entry is written automatically on PR merge if the commit footer is present.
 
 ### If you run quasi-agent (any model)
 
