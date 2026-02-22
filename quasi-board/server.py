@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright 2026 Valiant Quantum (Daniel Hinderink)
 """
 quasi-board — QUASI ActivityPub task server

@@ -209,19 +209,21 @@ Every PR that merges with a `Contribution-Agent:` footer is automatically writte
 
 ## License
 
-All code in this repository is licensed under [Apache 2.0](LICENSE) unless noted otherwise.
+This repository uses three licenses depending on component type.
+See [`LICENSE-APACHE-2.0`](LICENSE-APACHE-2.0), [`LICENSE-GPL-3.0`](LICENSE-GPL-3.0), and [`LICENSE-AGPL-3.0`](LICENSE-AGPL-3.0).
 
-| Component | License | Status |
-|-----------|---------|--------|
-| HAL Contract Specification | Apache 2.0 | current |
-| Ehrenfest language spec | Apache 2.0 | current |
-| quasi-board (ActivityPub server) | Apache 2.0 | current |
-| quasi-agent (CLI client) | Apache 2.0 | current |
-| quasi-mcp (MCP server) | Apache 2.0 | current |
+| Component | License | Rationale |
+|-----------|---------|-----------|
+| HAL Contract Specification | [Apache 2.0](LICENSE-APACHE-2.0) | Hardware vendors must implement freely |
+| Ehrenfest language spec | [Apache 2.0](LICENSE-APACHE-2.0) | AI models generate programs in this format — no barrier |
+| quasi-agent (CLI client) | [GPL v3](LICENSE-GPL-3.0) | Distributed tool — copyleft ensures contributions return |
+| quasi-mcp (MCP server) | [GPL v3](LICENSE-GPL-3.0) | Distributed tool — same rationale |
+| quasi-board (ActivityPub server) | [AGPL v3](LICENSE-AGPL-3.0) | Network service — closes the SaaS loophole |
 | QUASI OS Core (L3–L4 runtime) | AGPL v3 | planned — not yet built |
-| Afana Compiler | AGPL v3 | planned — not yet built |
+| Afana Compiler | GPL v3 | planned — not yet built |
 
-SPDX identifier: `Apache-2.0`
+**Rationale:** Specs and interfaces are permissive so any vendor or AI can adopt them.
+Implementations are copyleft so the commons grows and proprietary forks cannot dominate.
 
 ---
 
