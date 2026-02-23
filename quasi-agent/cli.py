@@ -16,6 +16,9 @@ Usage:
     python3 quasi-agent/cli.py ledger
     python3 quasi-agent/cli.py contributors
     python3 quasi-agent/cli.py verify
+    python3 quasi-agent/cli.py watch
+    python3 quasi-agent/cli.py watch --interval 60
+    python3 quasi-agent/cli.py watch --once
 
 Default board: https://gawain.valiant-quantum.com
 
@@ -28,15 +31,18 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
+from pathlib import Path
 
 DEFAULT_BOARD = "https://gawain.valiant-quantum.com"
 ACTOR_PATH = "/quasi-board"
 OUTBOX_PATH = "/quasi-board/outbox"
 INBOX_PATH = "/quasi-board/inbox"
 LEDGER_PATH = "/quasi-board/ledger"
+SEEN_TASKS_FILE = Path.home() / ".quasi" / "seen_tasks.json"
 
 
 def get(url: str) -> dict:
@@ -269,6 +275,80 @@ def cmd_contributors(board: str) -> None:
     print()
 
 
+def _load_seen_tasks() -> set:
+    if SEEN_TASKS_FILE.exists():
+        try:
+            return set(json.loads(SEEN_TASKS_FILE.read_text()).get("seen", []))
+        except Exception:
+            return set()
+    return set()
+
+
+def _save_seen_tasks(seen: set) -> None:
+    SEEN_TASKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SEEN_TASKS_FILE.write_text(json.dumps({"seen": sorted(seen)}, indent=2))
+
+
+def _fetch_open_tasks_safe(board: str) -> list | None:
+    """Fetch open tasks from the outbox; returns None on connection error."""
+    url = f"{board}{OUTBOX_PATH}"
+    req = urllib.request.Request(url, headers={
+        "Accept": "application/activity+json, application/json",
+        "User-Agent": "quasi-agent/0.1",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            outbox = json.loads(resp.read())
+    except Exception as e:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{now}] Connection error: {e}", file=sys.stderr)
+        return None
+
+    tasks = []
+    for item in outbox.get("orderedItems", []):
+        t = item.get("object", item) if item.get("type") == "Create" else item
+        task_id = t.get("quasi:taskId")
+        if not task_id:
+            continue
+        title = t.get("name", "")
+        if not title:
+            content = t.get("content", "")
+            m = re.search(r"<strong>(.+?)</strong>", content)
+            title = m.group(1) if m else "(no title)"
+        tasks.append({"id": task_id, "title": title})
+    return tasks
+
+
+def cmd_watch(board: str, agent: str, interval: int, once: bool) -> None:
+    seen = _load_seen_tasks()
+
+    if not once:
+        print(f"Watching {board} every {interval}s for new tasks — Ctrl+C to stop\n")
+
+    try:
+        while True:
+            tasks = _fetch_open_tasks_safe(board)
+            if tasks is not None:
+                new_tasks = [t for t in tasks if t["id"] not in seen]
+                for task in new_tasks:
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    print(f"[{now}] NEW TASK: {task['id']} — {task['title']}")
+                    print(f"  Claim: python3 quasi-agent/cli.py --board {board} --agent {agent} claim {task['id']}")
+                    seen.add(task["id"])
+                _save_seen_tasks(seen)
+                if once:
+                    if not new_tasks:
+                        print("No new open tasks.")
+                    break
+            elif once:
+                sys.exit(1)
+
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nWatch stopped.")
+        sys.exit(0)
+
+
 def cmd_verify(board: str) -> None:
     result = get(f"{board}{LEDGER_PATH}/verify")
     valid = result.get("valid", False)
@@ -313,6 +393,12 @@ def main() -> None:
     sub.add_parser("contributors", help="List named contributors from the ledger")
     sub.add_parser("verify", help="Verify ledger chain integrity")
 
+    p_watch = sub.add_parser("watch", help="Poll for new open tasks (persistent service mode)")
+    p_watch.add_argument("--interval", type=int, default=300, metavar="N",
+                         help="Poll interval in seconds (default 300)")
+    p_watch.add_argument("--once", action="store_true",
+                         help="Print new open tasks and exit (useful for cron)")
+
     args = parser.parse_args()
 
     if not args.cmd:
@@ -335,6 +421,8 @@ def main() -> None:
         cmd_contributors(board)
     elif args.cmd == "verify":
         cmd_verify(board)
+    elif args.cmd == "watch":
+        cmd_watch(board, args.agent, args.interval, args.once)
 
 
 if __name__ == "__main__":
