@@ -9,8 +9,8 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
-def _make_entry(id, type, task, agent, hours_ago=0):
-    ts = (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).isoformat()
+def _make_entry(id, type, task, agent, minutes_ago=0):
+    ts = (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat()
     entry = {
         "id": id, "type": type, "task": task,
         "contributor_agent": agent, "timestamp": ts,
@@ -26,7 +26,7 @@ async def test_double_claim_returns_409():
     from httpx import ASGITransport, AsyncClient
     from server import app
 
-    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=1)]
+    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=5)]
 
     with patch("server.load_ledger", return_value=chain), \
          patch("server.append_ledger") as mock_append, \
@@ -50,8 +50,8 @@ async def test_claim_after_expiry_allowed():
     from httpx import ASGITransport, AsyncClient
     from server import app
 
-    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=25)]
-    new_entry = _make_entry(2, "claim", "QUASI-001", "agent-b", hours_ago=0)
+    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=60)]
+    new_entry = _make_entry(2, "claim", "QUASI-001", "agent-b", minutes_ago=0)
 
     with patch("server.load_ledger", return_value=chain), \
          patch("server.append_ledger", return_value=new_entry), \
@@ -74,8 +74,8 @@ async def test_same_agent_reclaim_allowed():
     from httpx import ASGITransport, AsyncClient
     from server import app
 
-    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=1)]
-    new_entry = _make_entry(2, "claim", "QUASI-001", "agent-a", hours_ago=0)
+    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=5)]
+    new_entry = _make_entry(2, "claim", "QUASI-001", "agent-a", minutes_ago=0)
 
     with patch("server.load_ledger", return_value=chain), \
          patch("server.append_ledger", return_value=new_entry), \

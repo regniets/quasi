@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from server import _check_agent_claimed
 
 
-def _make_entry(id, type, task, agent, hours_ago=0):
-    ts = (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).isoformat()
+def _make_entry(id, type, task, agent, minutes_ago=0):
+    ts = (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat()
     entry = {
         "id": id, "type": type, "task": task,
         "contributor_agent": agent, "timestamp": ts,
@@ -23,13 +23,13 @@ def _make_entry(id, type, task, agent, hours_ago=0):
 
 
 def test_valid_claim_passes():
-    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=1)]
+    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=5)]
     with patch("server.load_ledger", return_value=chain):
         _check_agent_claimed("QUASI-001", "agent-a")  # should not raise
 
 
 def test_expired_claim_raises_403():
-    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=25)]
+    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=60)]
     with patch("server.load_ledger", return_value=chain):
         with pytest.raises(Exception) as exc_info:
             _check_agent_claimed("QUASI-001", "agent-a")

@@ -6,11 +6,11 @@ from unittest.mock import patch
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from server import _effective_task_status, CLAIM_TTL_HOURS
+from server import _effective_task_status, CLAIM_TTL_MINUTES
 
 
-def _make_entry(id, type, task, agent, hours_ago=0):
-    ts = (datetime.now(timezone.utc) - timedelta(hours=hours_ago)).isoformat()
+def _make_entry(id, type, task, agent, minutes_ago=0):
+    ts = (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat()
     entry = {
         "id": id, "type": type, "task": task,
         "contributor_agent": agent, "timestamp": ts,
@@ -28,7 +28,8 @@ def test_no_entries_returns_open():
 
 
 def test_fresh_claim_returns_claimed():
-    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=1)]
+    # Claimed 5 minutes ago — well within 30-minute TTL
+    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=5)]
     with patch("server.load_ledger", return_value=chain):
         status = _effective_task_status("QUASI-001")
     assert status["status"] == "claimed"
@@ -37,7 +38,8 @@ def test_fresh_claim_returns_claimed():
 
 
 def test_expired_claim_returns_open():
-    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=25)]
+    # Claimed 60 minutes ago — past 30-minute TTL
+    chain = [_make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=60)]
     with patch("server.load_ledger", return_value=chain):
         status = _effective_task_status("QUASI-001")
     assert status["status"] == "open"
@@ -45,8 +47,8 @@ def test_expired_claim_returns_open():
 
 def test_completion_returns_done():
     chain = [
-        _make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=2),
-        _make_entry(2, "completion", "QUASI-001", "agent-a", hours_ago=1),
+        _make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=20),
+        _make_entry(2, "completion", "QUASI-001", "agent-a", minutes_ago=5),
     ]
     with patch("server.load_ledger", return_value=chain):
         status = _effective_task_status("QUASI-001")
@@ -54,7 +56,7 @@ def test_completion_returns_done():
 
 
 def test_different_task_ignored():
-    chain = [_make_entry(1, "claim", "QUASI-002", "agent-a", hours_ago=1)]
+    chain = [_make_entry(1, "claim", "QUASI-002", "agent-a", minutes_ago=5)]
     with patch("server.load_ledger", return_value=chain):
         status = _effective_task_status("QUASI-001")
     assert status["status"] == "open"
@@ -62,8 +64,8 @@ def test_different_task_ignored():
 
 def test_submission_after_claim_counts_as_active():
     chain = [
-        _make_entry(1, "claim", "QUASI-001", "agent-a", hours_ago=20),
-        _make_entry(2, "submission", "QUASI-001", "agent-a", hours_ago=1),
+        _make_entry(1, "claim", "QUASI-001", "agent-a", minutes_ago=25),
+        _make_entry(2, "submission", "QUASI-001", "agent-a", minutes_ago=5),
     ]
     with patch("server.load_ledger", return_value=chain):
         status = _effective_task_status("QUASI-001")
