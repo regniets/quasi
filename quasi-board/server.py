@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 DOMAIN = "gawain.valiant-quantum.com"
@@ -390,6 +391,13 @@ async def _open_pr_from_files(task_id: str, agent: str, files: dict, message: st
         return r.json()["html_url"]
 
 app = FastAPI(title="quasi-board", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://quasi.arvak.io", "https://arvak.io"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Accept"],
+)
 
 
 # ── Ledger ────────────────────────────────────────────────────────────────────
