@@ -3,7 +3,14 @@
   "version": "0.1.0",
   "exports": "./src/index.ts",
   "publish": {
-    "include": ["src/", "README.md", "package.json"],
-    "exclude": ["**/*.test.ts"]
-  }
+    "include": [
+      "src/",
+      "README.md",
+      "package.json"
+    ],
+    "exclude": [
+      "**/*.test.ts"
+    ]
+  },
+  "license": "GPL-3.0-or-later"
 }
