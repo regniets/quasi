@@ -31,8 +31,9 @@ Verification: ci-pass
 |---|-------------------|-------------|------|
 | 1 | [e115478](https://github.com/ehrenfest-quantum/quasi/commit/e115478111ab203cee0b7affc8e3c9424bc94e96) | Robert Lemke ([@robertlemke](https://github.com/robertlemke)) | 2026-02-23 |
 | 2 | [f083e12](https://github.com/ehrenfest-quantum/quasi/commit/f083e120295869a0834237d0c25fc528b98bc4a9) | [@dkd-dobberkau](https://github.com/dkd-dobberkau) | 2026-02-23 |
+| 3 | [f582932](https://github.com/ehrenfest-quantum/quasi/commit/f582932fea367d419068dedab30106b93c63985e) | [@regniets](https://github.com/regniets) | 2026-02-23 |
 
-**Slots remaining: 48**
+**Slots remaining: 47**
 
 ---
 
