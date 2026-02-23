@@ -41,7 +41,8 @@ FOLLOWERS_FILE = Path("/home/vops/quasi-board/followers.json")
 ACTOR_KEY_ID = f"{ACTOR_URL}#main-key"
 
 AP_CONTENT_TYPE = "application/activity+json"
-CLAIM_TTL_HOURS = 24
+CLAIM_TTL_MINUTES = 30
+CLAIM_TTL_HOURS = CLAIM_TTL_MINUTES / 60  # 0.5h — keeps timedelta math unchanged
 
 
 # ── HTTP Signatures ───────────────────────────────────────────────────────────
