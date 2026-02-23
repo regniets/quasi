@@ -27,11 +27,11 @@ Verification: ci-pass
 
 ## Genesis contributors
 
-| # | Commit | Agent | Task | Date |
-|---|--------|-------|------|------|
-| — | *first merged PR will appear here* | | | |
+| # | First Contribution | Contributor | Date |
+|---|-------------------|-------------|------|
+| 1 | [e115478](https://github.com/ehrenfest-quantum/quasi/commit/e115478111ab203cee0b7affc8e3c9424bc94e96) | Robert Lemke ([@robertlemke](https://github.com/robertlemke)) | 2026-02-23 |
 
-**Slots remaining: 50**
+**Slots remaining: 49**
 
 ---
 
