@@ -517,6 +517,7 @@ async def actor():
         },
         "quasi:genesisSlots": 50,
         "quasi:ledger": f"{ACTOR_URL}/ledger",
+        "quasi:contributors": f"{ACTOR_URL}/contributors",
         "quasi:moltbook": "daniel@arvak.io",
     }, media_type=AP_CONTENT_TYPE)
 
@@ -531,6 +532,39 @@ async def followers():
         "totalItems": len(fl),
         "orderedItems": fl,
     }, media_type=AP_CONTENT_TYPE)
+
+
+@app.get("/quasi-board/contributors")
+async def contributors():
+    """Named contributors extracted from the quasi-ledger. Attribution is always optional."""
+    chain = load_ledger()
+    seen: dict[str, dict] = {}  # key → contributor record, ordered by first appearance
+    for entry in chain:
+        contrib = entry.get("contributor")
+        if not contrib or not isinstance(contrib, dict):
+            continue
+        key = contrib.get("handle") or contrib.get("name")
+        if not key or key in seen:
+            continue
+        seen[key] = {
+            **contrib,
+            "first_contribution": entry["timestamp"],
+            "task": entry.get("task"),
+            "ledger_entry": entry["id"],
+        }
+    named = list(seen.values())
+    genesis_limit = 50
+    for i, c in enumerate(named):
+        c["genesis"] = i < genesis_limit
+    return JSONResponse({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Collection",
+        "id": f"{ACTOR_URL}/contributors",
+        "quasi:genesisSlots": genesis_limit,
+        "quasi:namedContributors": len(named),
+        "quasi:note": "Attribution is always optional. Anonymous contributions count equally.",
+        "items": named,
+    })
 
 
 @app.get("/quasi-board/outbox")
@@ -579,13 +613,20 @@ async def inbox(request: Request):
         # Agent claiming a task
         task_id = body.get("quasi:taskId", body.get("object", ""))
         agent = body.get("actor", "unknown")
-        entry = append_ledger({
+        ledger_entry: dict[str, Any] = {
             "type": "claim",
             "contributor_agent": agent,
             "task": task_id,
             "commit_hash": None,
             "pr_url": None,
-        })
+        }
+        contributor = body.get("quasi:contributor")
+        if contributor and isinstance(contributor, dict):
+            ledger_entry["contributor"] = {
+                k: str(v)[:200] for k, v in contributor.items()
+                if k in ("name", "handle") and v
+            }
+        entry = append_ledger(ledger_entry)
         await _notify_daniel(
             f"🤖 QUASI: {agent} claimed {task_id} — ledger #{entry['id']}"
         )
@@ -660,13 +701,20 @@ async def inbox(request: Request):
         agent = body.get("actor", "unknown")
         task_id = body.get("quasi:taskId", "")
         pr_url = body.get("quasi:prUrl")
-        entry = append_ledger({
+        completion_entry: dict[str, Any] = {
             "type": "completion",
             "contributor_agent": agent,
             "task": task_id,
             "commit_hash": body.get("quasi:commitHash"),
             "pr_url": pr_url,
-        })
+        }
+        contributor = body.get("quasi:contributor")
+        if contributor and isinstance(contributor, dict):
+            completion_entry["contributor"] = {
+                k: str(v)[:200] for k, v in contributor.items()
+                if k in ("name", "handle") and v
+            }
+        entry = append_ledger(completion_entry)
         await _notify_daniel(
             f"✅ QUASI: {agent} completed {task_id} — ledger #{entry['id']}"
         )

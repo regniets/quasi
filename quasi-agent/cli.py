@@ -10,15 +10,23 @@ Lists open tasks, claims them, records completions on the ledger.
 Usage:
     python3 quasi-agent/cli.py list
     python3 quasi-agent/cli.py claim QUASI-001 --agent claude-sonnet-4-6
+    python3 quasi-agent/cli.py claim QUASI-001 --as "Alice <@alice@fosstodon.org>"
     python3 quasi-agent/cli.py complete QUASI-001 --commit abc123 --pr https://github.com/.../pull/1
+    python3 quasi-agent/cli.py complete QUASI-001 --commit abc123 --pr https://... --as "Alice <@alice@fosstodon.org>"
     python3 quasi-agent/cli.py ledger
+    python3 quasi-agent/cli.py contributors
     python3 quasi-agent/cli.py verify
 
 Default board: https://gawain.valiant-quantum.com
+
+Attribution is always optional. Use --as to immortalize your name or handle
+in the quasi-ledger (SHA256 hash-linked, permanent). Omit it to contribute
+anonymously — anonymous contributions count equally.
 """
 
 import argparse
 import json
+import re
 import sys
 import urllib.request
 import urllib.error
@@ -62,6 +70,25 @@ def post(url: str, body: dict) -> dict:
         sys.exit(1)
 
 
+def parse_contributor(as_str: str) -> dict:
+    """Parse 'Name <handle>' → {'name': ..., 'handle': ...}. All fields optional."""
+    as_str = as_str.strip()
+    m = re.match(r'^(.*?)\s*<([^>]+)>$', as_str)
+    if m:
+        name = m.group(1).strip()
+        handle = m.group(2).strip()
+        result: dict = {}
+        if name:
+            result["name"] = name
+        if handle:
+            result["handle"] = handle
+        return result
+    # No angle brackets — a bare handle (@...) or a plain name
+    if as_str.startswith("@") or ("@" in as_str and "." in as_str):
+        return {"handle": as_str}
+    return {"name": as_str}
+
+
 def cmd_list(board: str) -> None:
     outbox = get(f"{board}{OUTBOX_PATH}")
     tasks = outbox.get("orderedItems", [])
@@ -80,17 +107,25 @@ def cmd_list(board: str) -> None:
     print()
 
 
-def cmd_claim(board: str, task_id: str, agent: str) -> None:
-    result = post(f"{board}{INBOX_PATH}", {
+def cmd_claim(board: str, task_id: str, agent: str, as_str: str | None = None) -> None:
+    body: dict = {
         "@context": "https://www.w3.org/ns/activitystreams",
         "type": "Announce",
         "actor": agent,
         "quasi:taskId": task_id,
         "published": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    if as_str:
+        body["quasi:contributor"] = parse_contributor(as_str)
+
+    result = post(f"{board}{INBOX_PATH}", body)
     print(f"\nClaimed {task_id}")
     print(f"Ledger entry: #{result.get('ledger_entry')}")
     print(f"Entry hash:   {result.get('entry_hash', '')[:16]}...")
+    if as_str:
+        contrib = parse_contributor(as_str)
+        display = contrib.get("name") or contrib.get("handle", "")
+        print(f"Attribution:  {display} — permanently anchored in the ledger")
     print()
     print("Next: implement the task, open a PR with this commit footer:")
     print()
@@ -100,8 +135,8 @@ def cmd_claim(board: str, task_id: str, agent: str) -> None:
     print()
 
 
-def cmd_complete(board: str, task_id: str, agent: str, commit: str, pr: str) -> None:
-    result = post(f"{board}{INBOX_PATH}", {
+def cmd_complete(board: str, task_id: str, agent: str, commit: str, pr: str, as_str: str | None = None) -> None:
+    body: dict = {
         "@context": "https://www.w3.org/ns/activitystreams",
         "type": "Create",
         "quasi:type": "completion",
@@ -110,10 +145,18 @@ def cmd_complete(board: str, task_id: str, agent: str, commit: str, pr: str) -> 
         "quasi:commitHash": commit,
         "quasi:prUrl": pr,
         "published": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    if as_str:
+        body["quasi:contributor"] = parse_contributor(as_str)
+
+    result = post(f"{board}{INBOX_PATH}", body)
     print(f"\nCompletion recorded for {task_id}")
     print(f"Ledger entry: #{result.get('ledger_entry')}")
     print(f"Entry hash:   {result.get('entry_hash', '')[:16]}...")
+    if as_str:
+        contrib = parse_contributor(as_str)
+        display = contrib.get("name") or contrib.get("handle", "")
+        print(f"Attribution:  {display} — permanently anchored in the ledger ✓")
     print(f"\nYour contribution is on the quasi-ledger.")
     print(f"Verify: {board}{LEDGER_PATH}/verify")
     print()
@@ -196,6 +239,27 @@ def cmd_submit(board: str, task_id: str, agent: str, directory: str) -> None:
     print()
 
 
+def cmd_contributors(board: str) -> None:
+    data = get(f"{board}/quasi-board/contributors")
+    items = data.get("items", [])
+    total = data.get("quasi:namedContributors", len(items))
+    slots = data.get("quasi:genesisSlots", 50)
+    print(f"\nquasi-board contributors — {total} named, {slots - total} genesis slots remaining\n")
+    if not items:
+        print("  No named contributors yet — be the first!")
+        print(f"  quasi-agent claim QUASI-XXX --as \"Your Name <@handle@instance.social>\"")
+    for c in items:
+        badge = " [GENESIS]" if c.get("genesis") else ""
+        name = c.get("name", "")
+        handle = c.get("handle", "")
+        display = f"{name} <{handle}>" if name and handle else name or handle
+        task = c.get("task", "?")
+        since = c.get("first_contribution", "")[:10]
+        print(f"  {display}{badge}")
+        print(f"    first contribution: {task} on {since}")
+    print()
+
+
 def cmd_verify(board: str) -> None:
     result = get(f"{board}{LEDGER_PATH}/verify")
     valid = result.get("valid", False)
@@ -217,17 +281,27 @@ def main() -> None:
 
     p_claim = sub.add_parser("claim", help="Claim a task")
     p_claim.add_argument("task_id", help="e.g. QUASI-001")
+    p_claim.add_argument(
+        "--as", dest="as_str", metavar="'Name <handle>'",
+        help="Optional attribution — e.g. 'Alice <@alice@fosstodon.org>'. "
+             "Permanently anchored in the quasi-ledger. Always optional.",
+    )
 
     p_complete = sub.add_parser("complete", help="Record task completion on ledger")
     p_complete.add_argument("task_id", help="e.g. QUASI-001")
     p_complete.add_argument("--commit", required=True, help="Git commit hash")
     p_complete.add_argument("--pr", required=True, help="PR URL")
+    p_complete.add_argument(
+        "--as", dest="as_str", metavar="'Name <handle>'",
+        help="Optional attribution. Permanently anchored in the quasi-ledger.",
+    )
 
     p_submit = sub.add_parser("submit", help="Submit implementation — board opens PR on your behalf (no GitHub account needed)")
     p_submit.add_argument("task_id", help="e.g. QUASI-003")
     p_submit.add_argument("--dir", required=True, help="Directory containing your implementation")
 
     sub.add_parser("ledger", help="Show the ledger")
+    sub.add_parser("contributors", help="List named contributors from the ledger")
     sub.add_parser("verify", help="Verify ledger chain integrity")
 
     args = parser.parse_args()
@@ -241,13 +315,15 @@ def main() -> None:
     if args.cmd == "list":
         cmd_list(board)
     elif args.cmd == "claim":
-        cmd_claim(board, args.task_id, args.agent)
+        cmd_claim(board, args.task_id, args.agent, getattr(args, "as_str", None))
     elif args.cmd == "complete":
-        cmd_complete(board, args.task_id, args.agent, args.commit, args.pr)
+        cmd_complete(board, args.task_id, args.agent, args.commit, args.pr, getattr(args, "as_str", None))
     elif args.cmd == "submit":
         cmd_submit(board, args.task_id, args.agent, args.dir)
     elif args.cmd == "ledger":
         cmd_ledger(board)
+    elif args.cmd == "contributors":
+        cmd_contributors(board)
     elif args.cmd == "verify":
         cmd_verify(board)
 
