@@ -1,0 +1,9 @@
+{
+  "name": "@ehrenfest-quantum/quasi-mcp",
+  "version": "0.1.0",
+  "exports": "./src/index.ts",
+  "publish": {
+    "include": ["src/", "README.md", "package.json"],
+    "exclude": ["**/*.test.ts"]
+  }
+}
