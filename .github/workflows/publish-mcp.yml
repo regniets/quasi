@@ -1,4 +1,4 @@
-name: Publish quasi-mcp-server to npm
+name: Publish quasi-mcp-server to JSR
 
 on:
   push:
@@ -8,15 +8,13 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # required for JSR OIDC auth
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-      - run: npm ci
+      - run: npx jsr publish
         working-directory: quasi-mcp
-      - run: npm publish --access public
-        working-directory: quasi-mcp
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
